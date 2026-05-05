@@ -123,6 +123,8 @@
 
         const IG_ICON = "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg";
         const FB_ICON = "https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg";
+        const LOGO_PRINCIPALE = "Progetto senza titolo-3.png";
+        const LOGO_AUTOSUPERMARKET = "unnamed.png";
 
         const App = () => {
             const [currentPage, setCurrentPage] = useState('home');
@@ -242,10 +244,7 @@
                     <nav className="bg-white/95 backdrop-blur-md border-b sticky top-0 z-50 px-6 py-4 shadow-sm w-full">
                         <div className="max-w-7xl mx-auto flex justify-between items-center">
                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }}>
-                                <div className="bg-red-600 p-2 rounded-lg text-white">
-                                    <i data-lucide="car" className="w-6 h-6"></i>
-                                </div>
-                                <span className="font-extrabold uppercase italic tracking-tighter text-xl text-slate-900">{CONFIG.nomeConcessionaria}</span>
+                                <img src={LOGO_PRINCIPALE} alt={CONFIG.nomeConcessionaria} className="h-12 md:h-16 object-contain" />
                             </div>
                             
                             <div className="hidden md:flex gap-8 text-[10px] font-bold uppercase tracking-widest text-slate-500">
@@ -626,7 +625,7 @@
                                             )}
                                             {CONFIG.social.autosupermarket && (
                                                 <a href={CONFIG.social.autosupermarket} target="_blank" className="bg-red-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-4 hover:bg-red-700 transition shadow-lg transform hover:-translate-y-1">
-                                                    <i data-lucide="car" className="w-5 h-5"></i> Autosupermarket
+                                                    <img src={LOGO_AUTOSUPERMARKET} className="w-6 h-6 rounded-md bg-white p-0.5" alt="Autosupermarket" /> Autosupermarket
                                                 </a>
                                             )}
                                         </div>
@@ -723,7 +722,7 @@
                                     )}
                                     {CONFIG.social.autosupermarket && (
                                         <a href={CONFIG.social.autosupermarket} target="_blank" className="social-link w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-all hover:bg-white/10 hover:border-red-500/50 text-white">
-                                            <i data-lucide="car" className="w-6 h-6"></i>
+                                            <img src={LOGO_AUTOSUPERMARKET} className="social-icon-img rounded-md bg-white p-0.5" alt="Autosupermarket" />
                                         </a>
                                     )}
                                 </div>
