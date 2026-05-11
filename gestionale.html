@@ -53,10 +53,17 @@
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [editingId, setEditingId] = useState(null);
             
+            // Nuovi stati per i filtri di ricerca nel gestionale
+            const [searchMarca, setSearchMarca] = useState('');
+            const [showOnlyLungoTermine, setShowOnlyLungoTermine] = useState(false);
+            
             const initialForm = {
                 marca: '', modello: '', prezzo: '', anno: '', km: '', 
                 alimentazione: 'Diesel', categoria: 'SUV', descrizione: '', 
-                immagini: [], potenza: '', cilindrata: '', colore: ''
+                immagini: [], potenza: '', cilindrata: '', colore: '',
+                // Nuovi campi privati per Conto Vendita
+                isContoVendita: false, contoProprietario: '', contoUbicazione: '', 
+                contoRichiesta: '', contoSpese: '', fotoLibretto: ''
             };
             
             const [newCar, setNewCar] = useState(initialForm);
@@ -131,6 +138,32 @@
                 }));
             };
 
+            const handleLibretto = (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const MAX_SIZE = 1024; 
+                        if (width > MAX_SIZE || height > MAX_SIZE) {
+                            if (width > height) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
+                            else { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                        }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        setNewCar(prev => ({ ...prev, fotoLibretto: canvas.toDataURL('image/jpeg', 0.6) }));
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = "";
+            };
+
             const startEdit = (car) => {
                 setEditingId(car.id);
                 setNewCar({
@@ -145,7 +178,13 @@
                     potenza: car.potenza || '',
                     cilindrata: car.cilindrata || '',
                     colore: car.colore || '',
-                    immagini: car.galleria || (car.immagine ? [car.immagine] : [])
+                    immagini: car.galleria || (car.immagine ? [car.immagine] : []),
+                    isContoVendita: car.isContoVendita || false,
+                    contoProprietario: car.contoProprietario || '',
+                    contoUbicazione: car.contoUbicazione || '',
+                    contoRichiesta: car.contoRichiesta || '',
+                    contoSpese: car.contoSpese || '',
+                    fotoLibretto: car.fotoLibretto || ''
                 });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
@@ -176,7 +215,14 @@
                         cilindrata: newCar.cilindrata ? Number(newCar.cilindrata) : null,
                         colore: newCar.colore || '',
                         immagine: newCar.immagini[0], 
-                        galleria: newCar.immagini,   
+                        galleria: newCar.immagini,
+                        // Campi interni privati (conto vendita)
+                        isContoVendita: newCar.isContoVendita,
+                        contoProprietario: newCar.isContoVendita ? newCar.contoProprietario : null,
+                        contoUbicazione: newCar.isContoVendita ? newCar.contoUbicazione : null,
+                        contoRichiesta: newCar.isContoVendita ? Number(newCar.contoRichiesta) : null,
+                        contoSpese: newCar.isContoVendita ? Number(newCar.contoSpese) : null,
+                        fotoLibretto: newCar.isContoVendita ? newCar.fotoLibretto : null,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     };
 
@@ -202,6 +248,13 @@
                     await db.collection(COLLECTION_PATH).doc(id).delete();
                 }
             };
+
+            // Filtraggio lista auto in tempo reale per il gestionale
+            const filteredAutoList = autoList.filter(car => {
+                const matchMarca = !searchMarca || car.marca?.toLowerCase().includes(searchMarca.toLowerCase());
+                const matchNoleggio = !showOnlyLungoTermine || car.categoria === 'Noleggio a Lungo Termine';
+                return matchMarca && matchNoleggio;
+            });
 
             return (
                 <div className="min-h-screen p-4 md:p-8">
@@ -295,6 +348,12 @@
                                             <option>Coupé</option>
                                             <option>Furgone</option>
                                             <option>Fuori Strada</option>
+                                            <option>Auto d'epoca</option>
+                                            <option>Noleggio Giornaliero</option>
+                                            <option>Noleggio a Lungo Termine</option>
+                                            <option>Auto da Riparare</option>
+                                            <option>Camion</option>
+                                            <option>Altri Veicoli</option>
                                         </select>
                                     </div>
 
@@ -304,6 +363,44 @@
                                         value={newCar.descrizione}
                                         onChange={e => setNewCar({...newCar, descrizione: e.target.value})}
                                     ></textarea>
+
+                                    {/* Sezione Conto Vendita (Solo Interno) */}
+                                    <div className="border border-white/10 rounded-2xl p-4 bg-white/5 space-y-4">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input type="checkbox" className="w-5 h-5 rounded border-white/20 bg-transparent text-red-600 focus:ring-red-600 focus:ring-offset-slate-900" 
+                                                checked={newCar.isContoVendita} 
+                                                onChange={e => setNewCar({...newCar, isContoVendita: e.target.checked})} 
+                                            />
+                                            <span className="font-bold text-sm text-red-400 uppercase tracking-widest">Auto in Conto Vendita</span>
+                                        </label>
+                                        
+                                        {newCar.isContoVendita && (
+                                            <div className="grid grid-cols-1 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <input placeholder="Proprietario (Nome Cognome)" className="p-3 rounded-xl text-sm" value={newCar.contoProprietario} onChange={e => setNewCar({...newCar, contoProprietario: e.target.value})} />
+                                                    <input placeholder="Ubicazione Attuale" className="p-3 rounded-xl text-sm" value={newCar.contoUbicazione} onChange={e => setNewCar({...newCar, contoUbicazione: e.target.value})} />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <input type="number" placeholder="Richiesta Proprietario (€)" className="p-3 rounded-xl text-sm" value={newCar.contoRichiesta} onChange={e => setNewCar({...newCar, contoRichiesta: e.target.value})} />
+                                                    <input type="number" placeholder="Spese Effettuate (€)" className="p-3 rounded-xl text-sm" value={newCar.contoSpese} onChange={e => setNewCar({...newCar, contoSpese: e.target.value})} />
+                                                </div>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <label className="flex items-center justify-center gap-2 p-3 rounded-xl border border-white/10 bg-slate-900 hover:bg-slate-800 cursor-pointer transition flex-grow text-sm font-bold text-slate-300">
+                                                        <i data-lucide="camera" className="w-4 h-4 text-slate-400"></i> Carica Foto Libretto
+                                                        <input type="file" className="hidden" accept="image/*" onChange={handleLibretto} />
+                                                    </label>
+                                                    {newCar.fotoLibretto && (
+                                                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/20 flex-shrink-0 relative group">
+                                                            <img src={newCar.fotoLibretto} className="w-full h-full object-cover" alt="Libretto" />
+                                                            <button type="button" onClick={() => setNewCar({...newCar, fotoLibretto: ''})} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                                                <i data-lucide="x" className="w-4 h-4 text-white"></i>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     <button 
                                         disabled={isSubmitting}
@@ -317,13 +414,35 @@
 
                         {/* Elenco auto caricate */}
                         <div className="lg:col-span-2 space-y-4">
-                            <div className="flex justify-between items-end mb-2">
-                                <h2 className="font-bold uppercase tracking-widest text-xs text-slate-500">Auto Online ({autoList.length})</h2>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase italic">Andrea Branducci - Cloud Database</p>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4 border-b border-white/10 pb-4">
+                                <div>
+                                    <h2 className="font-bold uppercase tracking-widest text-xs text-slate-500 mb-1">Auto Online ({filteredAutoList.length})</h2>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase italic">Andrea Branducci - Cloud Database</p>
+                                </div>
+                                
+                                {/* Filtri di Ricerca Gestionale */}
+                                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                    <div className="relative">
+                                        <i data-lucide="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Cerca per Marca..." 
+                                            className="pl-9 p-2 rounded-xl text-sm w-full sm:w-48 bg-slate-800"
+                                            value={searchMarca}
+                                            onChange={e => setSearchMarca(e.target.value)}
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowOnlyLungoTermine(!showOnlyLungoTermine)}
+                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition border ${showOnlyLungoTermine ? 'bg-red-600 border-red-600 text-white' : 'bg-transparent border-white/20 text-slate-400 hover:text-white'}`}
+                                    >
+                                        <i data-lucide="calendar-clock" className="w-4 h-4"></i> Noleggio L.T.
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {autoList.map(car => (
+                                {filteredAutoList.map(car => (
                                     <div key={car.id} className="glass p-4 rounded-3xl flex gap-4 items-center group relative overflow-hidden hover:bg-white/[0.05] transition-all border-white/5">
                                         <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-white/5 bg-slate-800">
                                             <img src={car.immagine} className="w-full h-full object-cover" />
@@ -334,6 +453,7 @@
                                                 {car.anno} • {car.km?.toLocaleString()} KM • <span className="text-white">€{car.prezzo?.toLocaleString()}</span>
                                             </div>
                                             <div className="flex flex-wrap gap-2 mt-2">
+                                                {car.isContoVendita && <span className="text-[8px] bg-orange-600/20 px-1.5 py-0.5 rounded text-orange-400 font-bold uppercase border border-orange-600/30">Conto Vendita</span>}
                                                 {car.potenza && <span className="text-[8px] bg-red-600/20 px-1.5 py-0.5 rounded text-red-400 font-bold uppercase">{car.potenza} CV</span>}
                                                 {car.cilindrata && <span className="text-[8px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-bold uppercase">{car.cilindrata} cc</span>}
                                                 {car.colore && <span className="text-[8px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-bold uppercase">{car.colore}</span>}
