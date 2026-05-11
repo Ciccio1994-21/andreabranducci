@@ -126,12 +126,13 @@
         const LOGO_PRINCIPALE = "Progetto senza titolo-3.png";
         const LOGO_AUTOSUPERMARKET = "unnamed.png";
         const LOGO_AMWAY = "amway.png";
+        const LOGO_MAGAZZINI = "magazzini-branducci.png";
 
         const App = () => {
             const [currentPage, setCurrentPage] = useState('home');
             const [selectedCar, setSelectedCar] = useState(null);
             const [autoList, setAutoList] = useState([]);
-            const [filter, setFilter] = useState('Tutte');
+            const [filter, setFilter] = useState('Auto Usate');
             const [loading, setLoading] = useState(true);
             const [activeImage, setActiveImage] = useState(null);
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -182,7 +183,16 @@
 
             // Filtraggio semplice per la vetrina della Home (mostra max 6 auto)
             const homeAutoFiltrate = useMemo(() => {
-                return autoList.filter(a => filter === 'Tutte' || a.categoria === filter).slice(0, 6);
+                return autoList.filter(a => {
+                    if (filter === 'Auto Usate') {
+                        // Mostra tutto ciò che non è Noleggio
+                        return !(a.categoria?.includes('Noleggio'));
+                    } else if (filter === 'Auto a Noleggio') {
+                        // Mostra solo ciò che è Noleggio
+                        return a.categoria?.includes('Noleggio');
+                    }
+                    return true;
+                }).slice(0, 6);
             }, [autoList, filter]);
 
             // Auto specifiche per il Noleggio a Lungo Termine
@@ -245,49 +255,58 @@
                 return images;
             }, [selectedCar]);
 
-            // Array di tutte le categorie auto disponibili per il carosello in home
-            const homeCategories = ['Tutte', 'SUV', 'Berlina', 'Utilitaria', 'Sportiva', 'Furgone', 'Fuori Strada', "Auto d'epoca", "Noleggio Giornaliero", "Noleggio a Lungo Termine", "Auto da Riparare", "Camion", "Altri Veicoli"];
-
             return (
                 <div className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden w-full">
-                    <nav className="bg-white/95 backdrop-blur-md border-b sticky top-0 z-50 px-6 py-4 shadow-sm w-full">
-                        <div className="max-w-[90rem] mx-auto flex justify-between items-center gap-4">
-                            <div className="flex items-center gap-2 cursor-pointer flex-shrink-0" onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }}>
-                                <img src={LOGO_PRINCIPALE} alt={CONFIG.nomeConcessionaria} className="h-12 md:h-16 object-contain" />
+                    {/* Header Fisso */}
+                    <header className="sticky top-0 z-50 w-full flex flex-col shadow-sm">
+                        {/* Top Bar Magazzini Branducci */}
+                        <div className="bg-slate-100 border-b py-2 px-6 w-full">
+                            <div className="max-w-[90rem] mx-auto flex justify-end items-center">
+                                <a href="https://www.magazzinibranducci.com/" target="_blank" className="flex items-center gap-3 group">
+                                    <span className="text-[9px] uppercase font-bold tracking-widest text-slate-500 group-hover:text-red-600 transition hidden sm:inline">Visita anche il nostro store:</span>
+                                    <img src={LOGO_MAGAZZINI} className="h-4 md:h-5 object-contain opacity-80 group-hover:opacity-100 transition" alt="Magazzini Branducci"/>
+                                </a>
                             </div>
-                            
-                            {/* Desktop Menu - Modificato breakpoint a lg per ospitare più link */}
-                            <div className="hidden lg:flex flex-wrap justify-end gap-x-6 gap-y-2 text-[10px] xl:text-xs font-bold uppercase tracking-widest text-slate-500 items-center">
-                                <button onClick={() => { setCurrentPage('home'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'home' ? 'text-red-600' : ''}`}>Home</button>
-                                <button onClick={() => { setCurrentPage('piazzale'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'piazzale' ? 'text-red-600' : ''}`}>Piazzale</button>
-                                <button onClick={() => { setCurrentPage('vendi'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'vendi' ? 'text-red-600' : ''}`}>Vendi Auto</button>
-                                <button onClick={() => { setCurrentPage('lungo-termine'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'lungo-termine' ? 'text-red-600' : ''}`}>Lungo Termine</button>
-                                <button onClick={() => { setCurrentPage('amway'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'amway' ? 'text-red-600' : ''}`}>Amway</button>
-                                <a href="https://www.magazzinibranducci.com/" target="_blank" className="hover:text-red-600 transition flex items-center gap-1"><i data-lucide="external-link" className="w-3 h-3"></i> Magazzini Branducci</a>
-                                <button onClick={() => { setCurrentPage('chisiamo'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'chisiamo' ? 'text-red-600' : ''}`}>Chi Siamo</button>
-                                <button onClick={() => { setCurrentPage('contatti'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'contatti' ? 'text-red-600' : ''}`}>Contatti</button>
-                            </div>
-
-                            {/* Mobile Menu Button */}
-                            <button className="lg:hidden text-slate-900 focus:outline-none p-2 flex-shrink-0" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-                                <i data-lucide={isMobileMenuOpen ? "x" : "menu"} className="w-6 h-6"></i>
-                            </button>
                         </div>
 
-                        {/* Mobile Dropdown */}
-                        {isMobileMenuOpen && (
-                            <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b shadow-2xl flex flex-col py-6 px-8 gap-6 text-sm font-bold uppercase tracking-widest text-slate-600 animate-in slide-in-from-top-2 duration-300">
-                                <button onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'home' ? 'text-red-600' : ''}`}>Home</button>
-                                <button onClick={() => { setCurrentPage('piazzale'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'piazzale' ? 'text-red-600' : ''}`}>Piazzale</button>
-                                <button onClick={() => { setCurrentPage('vendi'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'vendi' ? 'text-red-600' : ''}`}>Vendi Auto</button>
-                                <button onClick={() => { setCurrentPage('lungo-termine'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'lungo-termine' ? 'text-red-600' : ''}`}>Lungo Termine</button>
-                                <button onClick={() => { setCurrentPage('amway'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'amway' ? 'text-red-600' : ''}`}>Amway</button>
-                                <button onClick={() => { setCurrentPage('chisiamo'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'chisiamo' ? 'text-red-600' : ''}`}>Chi Siamo</button>
-                                <button onClick={() => { setCurrentPage('contatti'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'contatti' ? 'text-red-600' : ''}`}>Contatti</button>
-                                <a href="https://www.magazzinibranducci.com/" target="_blank" className="text-left hover:text-red-600 transition flex items-center gap-2 mt-4 pt-4 border-t border-slate-100" onClick={() => setIsMobileMenuOpen(false)}><i data-lucide="external-link" className="w-4 h-4"></i> Magazzini Branducci</a>
+                        {/* Navigazione Principale */}
+                        <nav className="bg-white/95 backdrop-blur-md px-6 py-4 w-full">
+                            <div className="max-w-[90rem] mx-auto flex justify-between items-center gap-4">
+                                <div className="flex items-center gap-2 cursor-pointer flex-shrink-0" onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }}>
+                                    <img src={LOGO_PRINCIPALE} alt={CONFIG.nomeConcessionaria} className="h-12 md:h-16 object-contain" />
+                                </div>
+                                
+                                {/* Desktop Menu */}
+                                <div className="hidden lg:flex flex-wrap justify-end gap-x-6 gap-y-2 text-[10px] xl:text-xs font-bold uppercase tracking-widest text-slate-500 items-center">
+                                    <button onClick={() => { setCurrentPage('home'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'home' ? 'text-red-600' : ''}`}>Home</button>
+                                    <button onClick={() => { setCurrentPage('piazzale'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'piazzale' ? 'text-red-600' : ''}`}>Piazzale</button>
+                                    <button onClick={() => { setCurrentPage('vendi'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'vendi' ? 'text-red-600' : ''}`}>Vendi Auto</button>
+                                    <button onClick={() => { setCurrentPage('lungo-termine'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'lungo-termine' ? 'text-red-600' : ''}`}>Lungo Termine</button>
+                                    <button onClick={() => { setCurrentPage('amway'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'amway' ? 'text-red-600' : ''}`}>Amway</button>
+                                    <button onClick={() => { setCurrentPage('chisiamo'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'chisiamo' ? 'text-red-600' : ''}`}>Chi Siamo</button>
+                                    <button onClick={() => { setCurrentPage('contatti'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'contatti' ? 'text-red-600' : ''}`}>Contatti</button>
+                                </div>
+
+                                {/* Mobile Menu Button */}
+                                <button className="lg:hidden text-slate-900 focus:outline-none p-2 flex-shrink-0" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                                    <i data-lucide={isMobileMenuOpen ? "x" : "menu"} className="w-6 h-6"></i>
+                                </button>
                             </div>
-                        )}
-                    </nav>
+
+                            {/* Mobile Dropdown */}
+                            {isMobileMenuOpen && (
+                                <div className="lg:hidden absolute top-full left-0 w-full bg-white border-b shadow-2xl flex flex-col py-6 px-8 gap-6 text-sm font-bold uppercase tracking-widest text-slate-600 animate-in slide-in-from-top-2 duration-300">
+                                    <button onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'home' ? 'text-red-600' : ''}`}>Home</button>
+                                    <button onClick={() => { setCurrentPage('piazzale'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'piazzale' ? 'text-red-600' : ''}`}>Piazzale</button>
+                                    <button onClick={() => { setCurrentPage('vendi'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'vendi' ? 'text-red-600' : ''}`}>Vendi Auto</button>
+                                    <button onClick={() => { setCurrentPage('lungo-termine'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'lungo-termine' ? 'text-red-600' : ''}`}>Lungo Termine</button>
+                                    <button onClick={() => { setCurrentPage('amway'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'amway' ? 'text-red-600' : ''}`}>Amway</button>
+                                    <button onClick={() => { setCurrentPage('chisiamo'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'chisiamo' ? 'text-red-600' : ''}`}>Chi Siamo</button>
+                                    <button onClick={() => { setCurrentPage('contatti'); setSelectedCar(null); setIsMobileMenuOpen(false); }} className={`text-left hover:text-red-600 transition ${currentPage === 'contatti' ? 'text-red-600' : ''}`}>Contatti</button>
+                                </div>
+                            )}
+                        </nav>
+                    </header>
 
                     <main className="flex-grow w-full">
                         {currentPage === 'home' && (
@@ -329,7 +348,7 @@
                                 <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6 border-b pb-8">
                                     <h2 className="text-4xl font-black uppercase italic tracking-tight flex-shrink-0">Vetrina <span className="text-red-600 underline">Occasioni</span></h2>
                                     <div className="flex gap-2 bg-white p-1 rounded-full shadow-sm border overflow-x-auto max-w-full custom-scrollbar pb-2 md:pb-0">
-                                        {homeCategories.map(c => (
+                                        {['Auto Usate', 'Auto a Noleggio'].map(c => (
                                             <button key={c} onClick={() => setFilter(c)} className={`whitespace-nowrap px-4 md:px-6 py-2 rounded-full text-[10px] font-bold uppercase transition ${filter === c ? 'bg-red-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>{c}</button>
                                         ))}
                                     </div>
@@ -340,7 +359,7 @@
                                             <div className="h-64 overflow-hidden relative">
                                                 <img src={car.immagine} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt={car.modello} />
                                                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-slate-900 shadow-sm uppercase tracking-widest">{car.categoria}</div>
-                                                <div className="absolute bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-2xl font-black text-xl shadow-lg">€{Number(car.prezzo)?.toLocaleString()}</div>
+                                                <div className="absolute bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-2xl font-black text-xl shadow-lg">€{Number(car.prezzo)?.toLocaleString()} {car.categoria?.includes('Noleggio') ? '/ mese' : ''}</div>
                                             </div>
                                             <div className="p-8">
                                                 <h3 className="font-black uppercase text-2xl mb-1 tracking-tighter text-slate-900 leading-none">{car.marca}</h3>
@@ -354,6 +373,11 @@
                                             </div>
                                         </div>
                                     ))}
+                                    {homeAutoFiltrate.length === 0 && (
+                                        <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12">
+                                            <p className="text-slate-500 font-bold uppercase text-sm tracking-widest">Nessun veicolo trovato per questa selezione.</p>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-center">
                                     <button onClick={() => setCurrentPage('piazzale')} className="bg-slate-900 text-white px-10 py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-red-600 transition shadow-lg">Vedi Tutto il Piazzale</button>
@@ -471,7 +495,7 @@
                                                         <div className="h-56 overflow-hidden relative flex-shrink-0">
                                                             <img src={car.immagine} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt={car.modello} />
                                                             <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-slate-900 shadow-sm uppercase tracking-widest truncate max-w-[80%]">{car.categoria}</div>
-                                                            <div className="absolute bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-xl font-black text-lg shadow-lg">€{Number(car.prezzo)?.toLocaleString()}</div>
+                                                            <div className="absolute bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-xl font-black text-lg shadow-lg">€{Number(car.prezzo)?.toLocaleString()} {car.categoria?.includes('Noleggio') ? '/ mese' : ''}</div>
                                                         </div>
                                                         <div className="p-6 flex-grow flex flex-col">
                                                             <h3 className="font-black uppercase text-xl mb-1 tracking-tighter text-slate-900 leading-none">{car.marca}</h3>
@@ -522,7 +546,7 @@
                                         <span className="bg-red-100 text-red-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest w-fit mb-4">{selectedCar.categoria}</span>
                                         <h1 className="text-5xl font-black uppercase italic tracking-tighter text-slate-900 leading-none mb-2 break-words">{selectedCar.marca}</h1>
                                         <p className="text-2xl text-red-600 font-bold uppercase mb-6 break-words">{selectedCar.modello}</p>
-                                        <div className="text-4xl font-black text-slate-900 mb-8 italic">€ {Number(selectedCar.prezzo)?.toLocaleString()}</div>
+                                        <div className="text-4xl font-black text-slate-900 mb-8 italic">€ {Number(selectedCar.prezzo)?.toLocaleString()} {selectedCar.categoria?.includes('Noleggio') ? '/ mese' : ''}</div>
                                         
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
                                             <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
