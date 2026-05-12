@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestionale Andrea Branducci | Controllo Piazzale</title>
+    <title>Gestionale Andrea Branducci</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,16 +17,14 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: white; margin: 0; min-height: 100vh; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f8fafc; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        input, select, textarea { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; color: white !important; }
-        input:focus, textarea:focus { border-color: #ef4444 !important; outline: none; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .img-card:first-child { border: 2px solid #ef4444; }
+        input, select, textarea { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; transition: all 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #dc2626; background: rgba(255,255,255,0.1); }
+        option { background-color: #1e293b; color: white; }
     </style>
 </head>
-<body class="custom-scrollbar">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
@@ -57,6 +55,9 @@
             const [searchMarca, setSearchMarca] = useState('');
             const [showOnlyLungoTermine, setShowOnlyLungoTermine] = useState(false);
             
+            // Stato per l'immagine del libretto ingrandita
+            const [expandedLibretto, setExpandedLibretto] = useState(null);
+            
             const initialForm = {
                 marca: '', modello: '', prezzo: '', anno: '', km: '', 
                 alimentazione: 'Diesel', categoria: 'SUV', descrizione: '', 
@@ -69,22 +70,24 @@
             const [newCar, setNewCar] = useState(initialForm);
 
             useEffect(() => {
-                const init = async () => {
-                    await auth.signInAnonymously();
-                    db.collection(COLLECTION_PATH).orderBy('createdAt', 'desc').onSnapshot(snap => {
-                        setAutoList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                        setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 100);
+                auth.signInAnonymously().catch(console.error);
+                const unsubscribe = db.collection(COLLECTION_PATH)
+                    .orderBy('createdAt', 'desc')
+                    .onSnapshot(snapshot => {
+                        setAutoList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                     });
-                };
-                init();
+                return () => unsubscribe();
             }, []);
 
-            const handleFile = (e) => {
-                const files = Array.from(e.target.files);
-                const remainingSlots = 5 - newCar.immagini.length;
-                const filesToProcess = files.slice(0, remainingSlots);
+            useEffect(() => {
+                if(window.lucide) window.lucide.createIcons();
+            });
 
-                filesToProcess.forEach(file => {
+            const handleImageUpload = (e) => {
+                const files = Array.from(e.target.files);
+                if(files.length + newCar.immagini.length > 10) return alert("Massimo 10 foto permesse.");
+                
+                files.forEach(file => {
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         const img = new Image();
@@ -92,43 +95,22 @@
                             const canvas = document.createElement('canvas');
                             let width = img.width;
                             let height = img.height;
-                            const MAX_SIZE = 800; 
-
+                            const MAX_SIZE = 1200; 
                             if (width > MAX_SIZE || height > MAX_SIZE) {
-                                if (width > height) {
-                                    height *= MAX_SIZE / width;
-                                    width = MAX_SIZE;
-                                } else {
-                                    width *= MAX_SIZE / height;
-                                    height = MAX_SIZE;
-                                }
+                                if (width > height) { height *= MAX_SIZE / width; width = MAX_SIZE; } 
+                                else { width *= MAX_SIZE / height; height = MAX_SIZE; }
                             }
-
-                            canvas.width = width;
-                            canvas.height = height;
+                            canvas.width = width; canvas.height = height;
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, width, height);
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-
-                            setNewCar(prev => ({
-                                ...prev,
-                                immagini: [...prev.immagini, dataUrl].slice(0, 5)
-                            }));
+                            const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                            setNewCar(prev => ({...prev, immagini: [...prev.immagini, resizedDataUrl]}));
                         };
                         img.src = event.target.result;
                     };
                     reader.readAsDataURL(file);
                 });
-                e.target.value = ""; 
-            };
-
-            const moveImage = (index, direction) => {
-                const newImgs = [...newCar.immagini];
-                const targetIndex = index + direction;
-                if (targetIndex < 0 || targetIndex >= newImgs.length) return;
-                
-                [newImgs[index], newImgs[targetIndex]] = [newImgs[targetIndex], newImgs[index]];
-                setNewCar(prev => ({ ...prev, immagini: newImgs }));
+                e.target.value = "";
             };
 
             const removeImage = (index) => {
@@ -201,7 +183,6 @@
                 setIsSubmitting(true);
                 try {
                     // Creiamo l'oggetto da inviare pulendo i valori numerici
-                    // Nota: usiamo "potenza" come chiave minuscola per compatibilità
                     const payload = {
                         marca: newCar.marca,
                         modello: newCar.modello,
@@ -228,16 +209,14 @@
 
                     if (editingId) {
                         await db.collection(COLLECTION_PATH).doc(editingId).update(payload);
-                        alert("Annuncio aggiornato!");
                     } else {
                         payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                         await db.collection(COLLECTION_PATH).add(payload);
-                        alert("Auto pubblicata!");
                     }
-                    
-                    cancelEdit();
+                    setNewCar(initialForm);
+                    setEditingId(null);
                 } catch (error) {
-                    console.error(error);
+                    console.error("Errore salvataggio:", error);
                     alert("Errore durante il salvataggio.");
                 }
                 setIsSubmitting(false);
@@ -258,8 +237,25 @@
 
             return (
                 <div className="min-h-screen p-4 md:p-8">
-                    <header className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                        <div className="flex items-center gap-3">
+                    {/* Overlay per l'ingrandimento del libretto */}
+                    {expandedLibretto && (
+                        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setExpandedLibretto(null)}>
+                            <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+                                <button 
+                                    className="absolute -top-12 right-0 text-white hover:text-red-500 transition-colors bg-white/10 rounded-full p-2"
+                                    onClick={(e) => { e.stopPropagation(); setExpandedLibretto(null); }}
+                                    title="Chiudi visualizzazione"
+                                >
+                                    <i data-lucide="x" className="w-6 h-6"></i>
+                                </button>
+                                <img src={expandedLibretto} alt="Libretto Ingrandito" className="max-w-full max-h-[85vh] object-contain rounded-lg border border-white/20 shadow-2xl" />
+                            </div>
+                        </div>
+                    )}
+
+                    <header className="mb-8 bg-slate-900 border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-red-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
+                        <div className="flex items-center gap-4 relative z-10">
                             <div className="bg-red-600 p-3 rounded-2xl shadow-lg shadow-red-600/20 text-white">
                                 <i data-lucide="layout-dashboard" className="w-6 h-6"></i>
                             </div>
@@ -270,63 +266,30 @@
                         </div>
                     </header>
 
-                    <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Form di inserimento/modifica */}
-                        <div className="lg:col-span-1">
-                            <form onSubmit={saveCar} className="glass p-6 rounded-[2rem] sticky top-8 border-white/10">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-lg font-bold flex items-center gap-2 uppercase tracking-tight">
-                                        <i data-lucide={editingId ? "edit" : "plus-circle"} className="w-5 h-5 text-red-600"></i> 
-                                        {editingId ? 'Modifica Veicolo' : 'Nuovo Veicolo'}
-                                    </h2>
-                                    {editingId && (
-                                        <button type="button" onClick={cancelEdit} className="text-[10px] font-bold uppercase text-slate-400 hover:text-white">Annulla</button>
-                                    )}
-                                </div>
+                    {/* CORREZIONE LAYOUT: Rimosso effetto sticky per evitare sovrapposizioni */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Form di Inserimento (Colonna 1) */}
+                        <div className="glass p-6 md:p-8 rounded-[2rem] shadow-2xl border-t border-white/10 self-start w-full">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-2">
+                                    {editingId ? <><i data-lucide="edit" className="w-5 h-5 text-red-500"></i> Modifica</> : <><i data-lucide="plus-circle" className="w-5 h-5 text-red-500"></i> Inserisci</>} Veicolo
+                                </h2>
+                                {editingId && <button onClick={cancelEdit} className="text-xs text-slate-400 hover:text-white uppercase font-bold underline">Annulla</button>}
+                            </div>
 
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {newCar.immagini.map((img, idx) => (
-                                            <div key={idx} className="img-card relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-slate-900 group">
-                                                <img src={img} className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1">
-                                                    <div className="flex justify-between">
-                                                        <button type="button" onClick={() => moveImage(idx, -1)} className="bg-white/20 hover:bg-white/40 p-1 rounded backdrop-blur-md">
-                                                            <i data-lucide="chevron-left" className="w-3 h-3 text-white"></i>
-                                                        </button>
-                                                        <button type="button" onClick={() => removeImage(idx)} className="bg-red-600 hover:bg-red-700 p-1 rounded">
-                                                            <i data-lucide="x" className="w-3 h-3 text-white"></i>
-                                                        </button>
-                                                        <button type="button" onClick={() => moveImage(idx, 1)} className="bg-white/20 hover:bg-white/40 p-1 rounded backdrop-blur-md">
-                                                            <i data-lucide="chevron-right" className="w-3 h-3 text-white"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {idx === 0 && <div className="absolute bottom-0 left-0 right-0 bg-red-600 text-[8px] text-center font-bold uppercase py-0.5 text-white">Copertina</div>}
-                                            </div>
-                                        ))}
-                                        
-                                        {newCar.immagini.length < 5 && (
-                                            <label className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer transition">
-                                                <i data-lucide="plus" className="w-6 h-6 mb-1 opacity-20"></i>
-                                                <span className="text-[8px] font-bold uppercase opacity-40">Foto</span>
-                                                <input type="file" className="hidden" accept="image/*" multiple onChange={handleFile} />
-                                            </label>
-                                        )}
-                                    </div>
-
+                            <form onSubmit={saveCar} className="space-y-4">
+                                <div className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
-                                        <input required placeholder="Marca" className="p-3 rounded-xl text-sm" value={newCar.marca} onChange={e => setNewCar({...newCar, marca: e.target.value})} />
-                                        <input required placeholder="Modello" className="p-3 rounded-xl text-sm" value={newCar.modello} onChange={e => setNewCar({...newCar, modello: e.target.value})} />
+                                        <input required placeholder="Marca (es. Audi)" className="p-3 rounded-xl text-sm" value={newCar.marca} onChange={e => setNewCar({...newCar, marca: e.target.value.toUpperCase()})} />
+                                        <input required placeholder="Modello" className="p-3 rounded-xl text-sm" value={newCar.modello} onChange={e => setNewCar({...newCar, modello: e.target.value.toUpperCase()})} />
                                     </div>
-
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-3 gap-3">
                                         <input required type="number" placeholder="Prezzo (€)" className="p-3 rounded-xl text-sm" value={newCar.prezzo} onChange={e => setNewCar({...newCar, prezzo: e.target.value})} />
                                         <input required type="number" placeholder="Anno" className="p-3 rounded-xl text-sm" value={newCar.anno} onChange={e => setNewCar({...newCar, anno: e.target.value})} />
-                                        <input required type="number" placeholder="KM" className="p-3 rounded-xl text-sm" value={newCar.km} onChange={e => setNewCar({...newCar, km: e.target.value})} />
+                                        <input required type="number" placeholder="Km" className="p-3 rounded-xl text-sm" value={newCar.km} onChange={e => setNewCar({...newCar, km: e.target.value})} />
                                     </div>
-
-                                    <div className="grid grid-cols-3 gap-2">
+                                    
+                                    <div className="grid grid-cols-3 gap-3">
                                         <input type="number" placeholder="Potenza (CV)" className="p-3 rounded-xl text-sm" value={newCar.potenza} onChange={e => setNewCar({...newCar, potenza: e.target.value})} />
                                         <input type="number" placeholder="Cilindrata (cc)" className="p-3 rounded-xl text-sm" value={newCar.cilindrata} onChange={e => setNewCar({...newCar, cilindrata: e.target.value})} />
                                         <input placeholder="Colore" className="p-3 rounded-xl text-sm" value={newCar.colore} onChange={e => setNewCar({...newCar, colore: e.target.value})} />
@@ -339,6 +302,7 @@
                                             <option>Ibrida</option>
                                             <option>Elettrica</option>
                                             <option>GPL</option>
+                                            <option>Metano</option>
                                         </select>
                                         <select className="p-3 rounded-xl text-sm" value={newCar.categoria} onChange={e => setNewCar({...newCar, categoria: e.target.value})}>
                                             <option>SUV</option>
@@ -366,8 +330,8 @@
 
                                     {/* Sezione Conto Vendita (Solo Interno) */}
                                     <div className="border border-white/10 rounded-2xl p-4 bg-white/5 space-y-4">
-                                        <label className="flex items-center gap-3 cursor-pointer">
-                                            <input type="checkbox" className="w-5 h-5 rounded border-white/20 bg-transparent text-red-600 focus:ring-red-600 focus:ring-offset-slate-900" 
+                                        <label className="flex items-center gap-3 cursor-pointer w-fit">
+                                            <input type="checkbox" className="w-5 h-5 rounded border-white/20 bg-transparent text-red-600 focus:ring-red-600 focus:ring-offset-slate-900 cursor-pointer" 
                                                 checked={newCar.isContoVendita} 
                                                 onChange={e => setNewCar({...newCar, isContoVendita: e.target.checked})} 
                                             />
@@ -375,14 +339,14 @@
                                         </label>
                                         
                                         {newCar.isContoVendita && (
-                                            <div className="grid grid-cols-1 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="grid grid-cols-1 gap-3 animate-in fade-in slide-in-from-top-2 duration-300 pt-2 border-t border-white/10 mt-2">
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <input placeholder="Proprietario (Nome Cognome)" className="p-3 rounded-xl text-sm" value={newCar.contoProprietario} onChange={e => setNewCar({...newCar, contoProprietario: e.target.value})} />
-                                                    <input placeholder="Ubicazione Attuale" className="p-3 rounded-xl text-sm" value={newCar.contoUbicazione} onChange={e => setNewCar({...newCar, contoUbicazione: e.target.value})} />
+                                                    <input placeholder="Proprietario (Nome Cognome)" className="p-3 rounded-xl text-sm bg-slate-800" value={newCar.contoProprietario} onChange={e => setNewCar({...newCar, contoProprietario: e.target.value})} />
+                                                    <input placeholder="Ubicazione Attuale" className="p-3 rounded-xl text-sm bg-slate-800" value={newCar.contoUbicazione} onChange={e => setNewCar({...newCar, contoUbicazione: e.target.value})} />
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <input type="number" placeholder="Richiesta Proprietario (€)" className="p-3 rounded-xl text-sm" value={newCar.contoRichiesta} onChange={e => setNewCar({...newCar, contoRichiesta: e.target.value})} />
-                                                    <input type="number" placeholder="Spese Effettuate (€)" className="p-3 rounded-xl text-sm" value={newCar.contoSpese} onChange={e => setNewCar({...newCar, contoSpese: e.target.value})} />
+                                                    <input type="number" placeholder="Richiesta Proprietario (€)" className="p-3 rounded-xl text-sm bg-slate-800" value={newCar.contoRichiesta} onChange={e => setNewCar({...newCar, contoRichiesta: e.target.value})} />
+                                                    <input type="number" placeholder="Spese Effettuate (€)" className="p-3 rounded-xl text-sm bg-slate-800" value={newCar.contoSpese} onChange={e => setNewCar({...newCar, contoSpese: e.target.value})} />
                                                 </div>
                                                 <div className="flex items-center gap-4 mt-2">
                                                     <label className="flex items-center justify-center gap-2 p-3 rounded-xl border border-white/10 bg-slate-900 hover:bg-slate-800 cursor-pointer transition flex-grow text-sm font-bold text-slate-300">
@@ -390,10 +354,22 @@
                                                         <input type="file" className="hidden" accept="image/*" onChange={handleLibretto} />
                                                     </label>
                                                     {newCar.fotoLibretto && (
-                                                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/20 flex-shrink-0 relative group">
-                                                            <img src={newCar.fotoLibretto} className="w-full h-full object-cover" alt="Libretto" />
-                                                            <button type="button" onClick={() => setNewCar({...newCar, fotoLibretto: ''})} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                                                <i data-lucide="x" className="w-4 h-4 text-white"></i>
+                                                        <div 
+                                                            className="w-12 h-12 rounded-lg overflow-hidden border border-white/20 flex-shrink-0 relative group cursor-pointer" 
+                                                            onClick={() => setExpandedLibretto(newCar.fotoLibretto)}
+                                                            title="Clicca per ingrandire"
+                                                        >
+                                                            <img src={newCar.fotoLibretto} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition" alt="Libretto" />
+                                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                                                <i data-lucide="zoom-in" className="w-4 h-4 text-white"></i>
+                                                            </div>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={(e) => { e.stopPropagation(); setNewCar({...newCar, fotoLibretto: ''}); }} 
+                                                                className="absolute -top-1 -right-1 bg-red-600 rounded-full w-4 h-4 flex items-center justify-center shadow-lg hover:scale-110 transition z-10"
+                                                                title="Rimuovi foto libretto"
+                                                            >
+                                                                <i data-lucide="x" className="w-3 h-3 text-white"></i>
                                                             </button>
                                                         </div>
                                                     )}
@@ -402,18 +378,39 @@
                                         )}
                                     </div>
 
+                                    <div className="p-4 border border-white/10 rounded-2xl bg-white/5 border-dashed">
+                                        <label className="flex flex-col items-center justify-center gap-2 cursor-pointer text-slate-400 hover:text-white transition">
+                                            <i data-lucide="image-plus" className="w-8 h-8"></i>
+                                            <span className="text-xs font-bold uppercase tracking-widest">Carica Immagini Auto</span>
+                                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                        </label>
+                                        
+                                        {newCar.immagini.length > 0 && (
+                                            <div className="flex gap-2 overflow-x-auto mt-4 pb-2">
+                                                {newCar.immagini.map((img, idx) => (
+                                                    <div key={idx} className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-white/10 group">
+                                                        <img src={img} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => removeImage(idx)} className="absolute inset-0 bg-red-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                                            <i data-lucide="trash-2" className="w-4 h-4 text-white"></i>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <button 
                                         disabled={isSubmitting}
-                                        className={`w-full py-4 rounded-2xl font-bold uppercase tracking-widest text-sm transition shadow-xl text-white ${isSubmitting ? 'bg-slate-700 animate-pulse' : 'bg-red-600 hover:bg-red-700'}`}
+                                        className="w-full bg-red-600 hover:bg-red-700 text-white p-4 rounded-xl font-black uppercase text-xs tracking-widest transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
-                                        {isSubmitting ? 'Salvataggio...' : (editingId ? 'Aggiorna Annuncio' : 'Pubblica nel piazzale')}
+                                        {isSubmitting ? 'Salvataggio...' : (editingId ? 'Salva Modifiche' : 'Pubblica Online')}
                                     </button>
                                 </div>
                             </form>
                         </div>
 
-                        {/* Elenco auto caricate */}
-                        <div className="lg:col-span-2 space-y-4">
+                        {/* Elenco auto caricate (Colonne 2 e 3) */}
+                        <div className="lg:col-span-2 space-y-4 w-full">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4 border-b border-white/10 pb-4">
                                 <div>
                                     <h2 className="font-bold uppercase tracking-widest text-xs text-slate-500 mb-1">Auto Online ({filteredAutoList.length})</h2>
@@ -453,26 +450,32 @@
                                                 {car.anno} • {car.km?.toLocaleString()} KM • <span className="text-white">€{car.prezzo?.toLocaleString()}</span>
                                             </div>
                                             <div className="flex flex-wrap gap-2 mt-2">
-                                                {car.isContoVendita && <span className="text-[8px] bg-orange-600/20 px-1.5 py-0.5 rounded text-orange-400 font-bold uppercase border border-orange-600/30">Conto Vendita</span>}
+                                                {car.isContoVendita && <span className="text-[8px] bg-orange-600/20 px-1.5 py-0.5 rounded text-orange-400 font-bold uppercase border border-orange-600/30 flex items-center gap-1"><i data-lucide="user" className="w-3 h-3"></i> Conto Vendita</span>}
                                                 {car.potenza && <span className="text-[8px] bg-red-600/20 px-1.5 py-0.5 rounded text-red-400 font-bold uppercase">{car.potenza} CV</span>}
                                                 {car.cilindrata && <span className="text-[8px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-bold uppercase">{car.cilindrata} cc</span>}
                                                 {car.colore && <span className="text-[8px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 font-bold uppercase">{car.colore}</span>}
                                             </div>
                                         </div>
                                         
-                                        <div className="flex flex-col gap-2">
-                                            <button onClick={() => startEdit(car)} className="p-2 bg-blue-600/10 text-blue-400 rounded-lg md:opacity-0 group-hover:opacity-100 transition hover:bg-blue-600 hover:text-white">
-                                                <i data-lucide="edit-3" className="w-4 h-4"></i>
+                                        {/* Azioni Hover List */}
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {car.isContoVendita && car.fotoLibretto && (
+                                                <button onClick={() => setExpandedLibretto(car.fotoLibretto)} className="bg-orange-600 p-2 rounded-xl text-white hover:bg-orange-700 transition shadow-lg" title="Vedi Libretto">
+                                                    <i data-lucide="file-text" className="w-4 h-4"></i>
+                                                </button>
+                                            )}
+                                            <button onClick={() => startEdit(car)} className="bg-slate-700 p-2 rounded-xl text-white hover:bg-slate-600 transition shadow-lg" title="Modifica">
+                                                <i data-lucide="edit-2" className="w-4 h-4"></i>
                                             </button>
-                                            <button onClick={() => deleteCar(car.id)} className="p-2 bg-red-600/10 text-red-600 rounded-lg md:opacity-0 group-hover:opacity-100 transition hover:bg-red-600 hover:text-white">
-                                                <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                            <button onClick={() => deleteCar(car.id)} className="bg-red-600 p-2 rounded-xl text-white hover:bg-red-700 transition shadow-lg" title="Elimina">
+                                                <i data-lucide="trash" className="w-4 h-4"></i>
                                             </button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    </main>
+                    </div>
                 </div>
             );
         };
