@@ -259,30 +259,34 @@
                 <div className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden w-full">
                     {/* Header Fisso */}
                     <header className="sticky top-0 z-50 w-full flex flex-col shadow-sm">
-                        {/* Top Bar Magazzini Branducci */}
-                        <div className="bg-slate-100 border-b py-2 px-6 w-full">
-                            <div className="max-w-[90rem] mx-auto flex justify-end items-center">
-                                <a href="https://www.magazzinibranducci.com/" target="_blank" className="flex items-center gap-3 group">
-                                    <span className="text-[9px] uppercase font-bold tracking-widest text-slate-500 group-hover:text-red-600 transition hidden sm:inline">Visita anche il nostro store:</span>
-                                    <img src={LOGO_MAGAZZINI} className="h-4 md:h-5 object-contain opacity-80 group-hover:opacity-100 transition" alt="Magazzini Branducci"/>
-                                </a>
-                            </div>
-                        </div>
-
                         {/* Navigazione Principale */}
                         <nav className="bg-white/95 backdrop-blur-md px-6 py-4 w-full">
                             <div className="max-w-[90rem] mx-auto flex justify-between items-center gap-4">
-                                <div className="flex items-center gap-2 cursor-pointer flex-shrink-0" onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }}>
-                                    <img src={LOGO_PRINCIPALE} alt={CONFIG.nomeConcessionaria} className="h-12 md:h-16 object-contain" />
+                                
+                                {/* Area Loghi (Sinistra) */}
+                                <div className="flex items-center gap-6 lg:gap-8 flex-shrink-0">
+                                    {/* Logo Principale */}
+                                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setCurrentPage('home'); setSelectedCar(null); setIsMobileMenuOpen(false); }}>
+                                        <img src={LOGO_PRINCIPALE} alt={CONFIG.nomeConcessionaria} className="h-12 md:h-16 object-contain" />
+                                    </div>
+                                    
+                                    {/* Loghi Extra Partner (Solo Desktop) */}
+                                    <div className="hidden lg:flex items-center gap-6 border-l-2 pl-6 border-slate-100">
+                                        <button onClick={() => { setCurrentPage('amway'); setSelectedCar(null); }} className="hover:opacity-75 transition transform" title="Spazio Amway">
+                                            <img src={LOGO_AMWAY} alt="Amway" className="h-12 md:h-16 object-contain" />
+                                        </button>
+                                        <a href="https://www.magazzinibranducci.com/" target="_blank" className="hover:opacity-75 transition transform" title="Magazzini Branducci">
+                                            <img src={LOGO_MAGAZZINI} alt="Magazzini Branducci" className="h-12 md:h-16 object-contain" />
+                                        </a>
+                                    </div>
                                 </div>
                                 
-                                {/* Desktop Menu */}
+                                {/* Desktop Menu (Destra) */}
                                 <div className="hidden lg:flex flex-wrap justify-end gap-x-6 gap-y-2 text-[10px] xl:text-xs font-bold uppercase tracking-widest text-slate-500 items-center">
                                     <button onClick={() => { setCurrentPage('home'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'home' ? 'text-red-600' : ''}`}>Home</button>
                                     <button onClick={() => { setCurrentPage('piazzale'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'piazzale' ? 'text-red-600' : ''}`}>Piazzale</button>
                                     <button onClick={() => { setCurrentPage('vendi'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'vendi' ? 'text-red-600' : ''}`}>Vendi Auto</button>
                                     <button onClick={() => { setCurrentPage('lungo-termine'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'lungo-termine' ? 'text-red-600' : ''}`}>Lungo Termine</button>
-                                    <button onClick={() => { setCurrentPage('amway'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'amway' ? 'text-red-600' : ''}`}>Amway</button>
                                     <button onClick={() => { setCurrentPage('chisiamo'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'chisiamo' ? 'text-red-600' : ''}`}>Chi Siamo</button>
                                     <button onClick={() => { setCurrentPage('contatti'); setSelectedCar(null); }} className={`hover:text-red-600 transition ${currentPage === 'contatti' ? 'text-red-600' : ''}`}>Contatti</button>
                                 </div>
